@@ -28,6 +28,15 @@
 
 namespace MatrixPipeline::ProcessingUnit {
 
+// the base dtor would join only after m_processing_units is gone
+AsynchronousProcessingUnit::~AsynchronousProcessingUnit() {
+  stop();
+  for (auto &unit : m_processing_units)
+    if (auto *ptr =
+            std::get_if<std::shared_ptr<IAsynchronousProcessingUnit>>(&unit))
+      (*ptr)->stop();
+}
+
 bool AsynchronousProcessingUnit::init(const njson &config) {
   // m_exe = std::make_unique<PipelineExecutor>();
 

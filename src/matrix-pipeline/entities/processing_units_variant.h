@@ -11,8 +11,6 @@ namespace MatrixPipeline::ProcessingUnit {
 using ProcessingUnitVariant =
     std::variant<std::unique_ptr<ISynchronousProcessingUnit>,
                  std::shared_ptr<IAsynchronousProcessingUnit>>;
-// IAsynchronousProcessingUnit must be shared_ptr as we need shared_from_this()
-// to have thread-safety for *this access
 
 // --- C++17/C++20 Overload Helper ---
 template <class... Ts> struct overload : Ts... {

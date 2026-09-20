@@ -9,6 +9,8 @@
 #include <boost/uuid/uuid_generators.hpp>
 #include <opencv2/cudacodec.hpp>
 
+#include <future>
+
 namespace MatrixPipeline::Utils {
 struct RamVideoBuffer;
 } // namespace MatrixPipeline::Utils
@@ -19,9 +21,7 @@ enum RoiLookupResult {
   Suppress // Find an ROI that is supposed to suppress the entire video
 };
 using namespace std::chrono_literals;
-class MatrixNotifier final
-    : public IAsynchronousProcessingUnit,
-      public std::enable_shared_from_this<MatrixNotifier> {
+class MatrixNotifier final : public IAsynchronousProcessingUnit {
   boost::uuids::random_generator m_uuid_generator;
   std::unique_ptr<Utils::NvJpegEncoder> m_gpu_encoder{nullptr};
   std::unique_ptr<Utils::MatrixSender> m_sender{nullptr};
@@ -63,6 +63,8 @@ class MatrixNotifier final
   std::string m_temp_video_path;
   Utils::VideoRecordingState m_state{Utils::IDLE};
   std::queue<AsyncPayload> m_frames_queue;
+  // last member: joined first, before anything the sends still use
+  std::vector<std::future<void>> m_pending_sends;
 
   RoiLookupResult look_for_roi(const PipelineContext &ctx) const;
 
@@ -71,11 +73,14 @@ class MatrixNotifier final
                     RoiLookupResult roi_flag);
 
   double calculate_roi_score(const PipelineContext &ctx) const;
-  static void
-  finalize_video_then_send_out(std::string,
-                               const std::shared_ptr<MatrixNotifier>);
+  void finalize_video_then_send_out(std::string temp_video_path,
+                                    std::string trimmed_video_path,
+                                    std::string jpeg_data,
+                                    cv::Size thumbnail_size,
+                                    size_t frame_count) const;
   std::optional<std::string> trim_video(const std::string &input_video_path,
-                                        int frames_to_remove);
+                                        const std::string &trimmed_video_path,
+                                        int frames_to_remove) const;
 
 public:
   explicit MatrixNotifier(const std::string &unit_path)

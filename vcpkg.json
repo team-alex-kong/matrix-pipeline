@@ -18,7 +18,7 @@
     },
     {
       "name": "drogon",
-      "version>=": "1.9.11"
+      "version>=": "1.9.13"
     },
     {
       "name": "protobuf",
@@ -44,7 +44,7 @@
       "version": "3.7.8"
     }
   ],
-  "builtin-baseline": "4c4abc2e8727221ede31021349386dac674309b0",
+  "builtin-baseline": "9e593bb18ea69cc5095e012465dcd675a822ed0d",
   "version": "0.0.2",
   "name": "matrix-pipeline"
 }

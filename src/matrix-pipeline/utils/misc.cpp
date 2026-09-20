@@ -27,10 +27,8 @@ static void signal_handler(int signum) noexcept {
   size_t written = 0;
   while (written < len) {
     ssize_t ret = write(STDOUT_FILENO, msg + written, len - written);
-    if (ret == -1) {
-      perror("write()");
+    if (ret == -1)
       break;
-    }
     written += ret;
   }
   sh_callback(signum);
@@ -48,17 +46,11 @@ void install_signal_handler(const signal_handler_callback cb) {
     abort();
   }
   act.sa_handler = signal_handler;
-  /* SA_RESETHAND means we want our signal_handler() to intercept the signal
-  once. If a signal is sent twice, the default signal handler will be used
-  again. `man sigaction` describes more possible sa_flags. */
-  /* In this particular case, we should not enable SA_RESETHAND, mainly
-  due to the issue that if a child process is kill, multiple SIGPIPE will
-  be invoked consecutively, breaking the program.  */
-  // act.sa_flags = SA_RESETHAND;
+  // writers handle EPIPE themselves
+  signal(SIGPIPE, SIG_IGN);
   if (sigaction(SIGINT, &act, nullptr) + sigaction(SIGABRT, &act, nullptr) +
           sigaction(SIGQUIT, &act, nullptr) +
           sigaction(SIGTERM, &act, nullptr) +
-          sigaction(SIGPIPE, &act, nullptr) +
           sigaction(SIGCHLD, &act, nullptr) +
           sigaction(SIGTRAP, &act, nullptr) <
       0) {
