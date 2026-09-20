@@ -17,7 +17,7 @@ struct videoWritingContext {
   float fps;
 };
 
-class VideoFeedManager {
+class VideoFeedManager : public std::enable_shared_from_this<VideoFeedManager> {
 
 public:
   VideoFeedManager() = default;
@@ -29,8 +29,9 @@ private:
   ProcessingUnit::AsynchronousProcessingUnit m_apu{""};
   std::string deviceName;
 
+  std::mutex mtx_vr;
+  std::atomic<bool> delayed_vc_open_retry_registered{false};
   cv::Ptr<cv::cudacodec::VideoReader> vr{nullptr};
-  std::chrono::steady_clock::time_point m_last_vc_open_attempt;
   void always_fill_in_frame(cv::cuda::GpuMat &frame,
                             ProcessingUnit::PipelineContext &ctx);
   void handle_video_capture(const ProcessingUnit::PipelineContext &ctx);

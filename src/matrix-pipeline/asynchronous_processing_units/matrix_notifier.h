@@ -66,6 +66,7 @@ class MatrixNotifier final : public IAsynchronousProcessingUnit {
   // last member: joined first, before anything the sends still use
   std::vector<std::future<void>> m_pending_sends;
 
+  void consume_pending_sends(bool wait);
   RoiLookupResult look_for_roi(const PipelineContext &ctx) const;
 
   void handle_video(const cv::cuda::GpuMat &frame,
@@ -85,7 +86,7 @@ class MatrixNotifier final : public IAsynchronousProcessingUnit {
 public:
   explicit MatrixNotifier(const std::string &unit_path)
       : IAsynchronousProcessingUnit(unit_path + "/MatrixNotifier") {}
-  ~MatrixNotifier() override = default;
+  ~MatrixNotifier() override { consume_pending_sends(true); }
   bool init(const njson &config) override;
   void on_frame_ready(cv::cuda::GpuMat &frame, PipelineContext &ctx) override;
 };

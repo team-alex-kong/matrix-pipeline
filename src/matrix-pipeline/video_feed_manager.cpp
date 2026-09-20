@@ -7,6 +7,7 @@
 #include <opencv2/cudacodec.hpp>
 #include <spdlog/spdlog.h>
 
+#include <gsl/gsl>
 #include <regex>
 #include <sys/socket.h>
 
@@ -61,6 +62,7 @@ void VideoFeedManager::always_fill_in_frame(
 
   constexpr auto warn_interval = 10s;
   try {
+    std::lock_guard lock(mtx_vr);
     if (vr == nullptr) {
       if (steady_clock::now() - m_last_warn_time > warn_interval &&
           // give the video feed a few sec to open without complaining
@@ -122,34 +124,77 @@ void VideoFeedManager::always_fill_in_frame(
 
 void VideoFeedManager::handle_video_capture(
     const ProcessingUnit::PipelineContext &ctx) {
-  using namespace std::chrono;
-  const auto now = steady_clock::now();
-  if (ctx.captured_from_real_device)
-    return;
-  const auto since = ctx.capture_from_this_device_since;
-  const auto down_for = duration_cast<seconds>(now - since);
-  // outage length at the previous attempt: doubles per failure, <0 on a new one
-  const auto backoff = std::clamp(
-      duration_cast<seconds>(m_last_vc_open_attempt - since), 2s, 600s);
-  if (now - m_last_vc_open_attempt < backoff)
-    return;
-  m_last_vc_open_attempt = now;
-  // give the video feed a few sec to open without complaining
-  if (ctx.frame_seq_num > 90)
-    SPDLOG_WARN("device_down_for(sec): {}, invoking "
-                "cv::cudacodec::createVideoReader({}), backoff(sec): {}",
-                down_for.count(), ctx.device_info.uri, backoff.count());
-  auto params = cv::cudacodec::VideoReaderInitParams();
-  params.allowFrameDrop = true;
-  try {
-    vr = cv::cudacodec::createVideoReader(
-        ctx.device_info.uri, {cv::CAP_PROP_OPEN_TIMEOUT_MSEC, 5000}, params);
-    vr->set(cv::cudacodec::ColorFormat::BGR);
-    SPDLOG_INFO("cv::cudacodec::createVideoReader({}) succeeded",
-                ctx.device_info.uri);
-  } catch (const cv::Exception &e) {
-    SPDLOG_ERROR("cudacodec::createVideoReader({}) failed: {}",
-                 ctx.device_info.uri, e.what());
+
+  auto register_delayed_vc_open_retry = [this, ctx]() {
+    // .exchange(true) atomically sets the flag to true and returns the PREVIOUS
+    // value. If it was already true, someone else is already handling the
+    // retry.
+    if (delayed_vc_open_retry_registered.exchange(true)) {
+      return;
+    }
+    using namespace std::chrono_literals;
+    const auto video_feed_down_for =
+        std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::steady_clock::now() -
+            ctx.capture_from_this_device_since);
+    const std::chrono::seconds delay_before_attempt =
+        std::min(std::max(video_feed_down_for, 2s), 60s * 10);
+    // give the video feed a few sec to open without complaining
+    if (ctx.frame_seq_num > 90)
+      SPDLOG_WARN("captured_from_real_device: {}, device_down_for(sec): {}, "
+                  "delay_before_attempt(sec): {}",
+                  ctx.captured_from_real_device, video_feed_down_for.count(),
+                  delay_before_attempt.count());
+
+    // creating a shared_ptr from *this, s.t. the detach()'ed t will never
+    // access *this after *this is deleted.
+    auto self_ptr = shared_from_this();
+    std::thread t(
+        [self_ptr](const std::chrono::seconds delay_before_attempt_,
+                   ProcessingUnit::PipelineContext ctx) {
+          SPDLOG_INFO(
+              "timer started, delay_before_attempt(sec) ({}) and then invoke "
+              "cv::cudacodec::createVideoReader({})",
+              delay_before_attempt_.count(), ctx.device_info.uri);
+          std::this_thread::sleep_for(delay_before_attempt_);
+          {
+            std::lock_guard lock(self_ptr->mtx_vr);
+            SPDLOG_INFO(
+                "delay_before_attempt(sec) ({}) reached, about to invoke "
+                "cv::cudacodec::createVideoReader({})",
+                delay_before_attempt_.count(), ctx.device_info.uri);
+            auto params = cv::cudacodec::VideoReaderInitParams();
+            // https://docs.opencv.org/4.9.0/dd/d7d/structcv_1_1cudacodec_1_1VideoReaderInitParams.html
+            params.allowFrameDrop = true;
+            try {
+              self_ptr->vr = cv::cudacodec::createVideoReader(
+                  ctx.device_info.uri, {}, params);
+              if (!self_ptr->vr)
+                throw std::runtime_error("!self_ptr->vr");
+              self_ptr->vr->set(cv::cudacodec::ColorFormat::BGR);
+              SPDLOG_INFO("cv::cudacodec::createVideoReader({}) succeeded",
+                          ctx.device_info.uri);
+            } catch (const cv::Exception &e) {
+              SPDLOG_ERROR("cudacodec::createVideoReader({}) failed: {}",
+                           ctx.device_info.uri, e.what());
+            }
+            std::this_thread::sleep_for(
+                100ms); // i.e., at least to skip one frame
+            auto reset_flag = gsl::finally([self_ptr] {
+              // Use 'release' to ensure all work done in this thread is
+              // "committed" and visible to other threads before the flag is
+              // reset to false.
+              self_ptr->delayed_vc_open_retry_registered.store(
+                  false, std::memory_order_release);
+            });
+          }
+        },
+        delay_before_attempt, ctx);
+    t.detach();
+  };
+
+  if (!ctx.captured_from_real_device) [[unlikely]] {
+    register_delayed_vc_open_retry();
   }
 }
 } // namespace MatrixPipeline

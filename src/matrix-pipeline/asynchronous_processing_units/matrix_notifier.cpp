@@ -164,6 +164,21 @@ void MatrixNotifier::finalize_video_then_send_out(
   }
 }
 
+void MatrixNotifier::consume_pending_sends(const bool wait) {
+  std::erase_if(m_pending_sends, [wait](auto &f) {
+    if (!wait && f.wait_for(0s) != std::future_status::ready)
+      return false;
+    try {
+      f.get();
+    } catch (const std::exception &e) {
+      SPDLOG_ERROR("video send failed: {}", e.what());
+    } catch (...) {
+      SPDLOG_ERROR("video send failed");
+    }
+    return true;
+  });
+}
+
 void MatrixNotifier::handle_video(const cv::cuda::GpuMat &frame,
                                   [[maybe_unused]] const PipelineContext &ctx,
                                   const RoiLookupResult roi_flag) {
@@ -247,9 +262,7 @@ void MatrixNotifier::handle_video(const cv::cuda::GpuMat &frame,
       std::string jpeg_data;
       if (!m_gpu_encoder->encode(m_max_roi_score_frame, jpeg_data, 90))
         SPDLOG_ERROR("m_gpu_encoder->encode() failed");
-      std::erase_if(m_pending_sends, [](auto &f) {
-        return f.wait_for(0s) == std::future_status::ready;
-      });
+      consume_pending_sends(false);
       m_pending_sends.push_back(std::async(
           std::launch::async, &MatrixNotifier::finalize_video_then_send_out,
           this, m_temp_video_path,
