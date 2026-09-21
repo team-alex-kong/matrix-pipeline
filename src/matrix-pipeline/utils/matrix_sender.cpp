@@ -1,4 +1,5 @@
 #include "matrix_sender.h"
+#include "../global_vars.h"
 
 #include <cpr/cpr.h>
 #include <spdlog/spdlog.h>
@@ -45,7 +46,7 @@ std::string MatrixSender::upload(const std::string &data,
   constexpr int max_retry_count = 10;
 
   cpr::Response r;
-  for (int i = 0; i < max_retry_count; ++i) {
+  for (int i = 0; i < max_retry_count && (i == 0 || ev_flag == 0); ++i) {
     r = cpr::Post(cpr::Url{url},
                   cpr::Header{{"Authorization", "Bearer " + accessToken},
                               {"Content-Type", contentType}},
@@ -53,7 +54,7 @@ std::string MatrixSender::upload(const std::string &data,
                       {"http", "socks5://localhost:7890"},
                       {"https", "socks5://localhost:7890"},
                   },*/
-                  cpr::Body{data});
+                  cpr::Body{data}, cpr::LowSpeed{1024, 30});
     if (r.status_code == 200) {
       try {
         auto j = njson::parse(r.text);
@@ -96,6 +97,7 @@ bool MatrixSender::send_event(const njson &contentBody,
       {"Content-Type", "application/json"} // Fixed typo here too
   });
   session.SetBody(cpr::Body{payload.dump()});
+  session.SetLowSpeed(cpr::LowSpeed{1024, 30});
   // session.SetVerbose(cpr::Verbose{true});
   // session.SetProxies(cpr::Proxies{{"http", "socks5://localhost:7890"},
   //                                 {"https", "socks5://localhost:7890"}});
@@ -216,7 +218,7 @@ void MatrixSender::send_video_from_memory(const std::string &video_data,
    }*/
   // SPDLOG_INFO("content: {}", content.dump());
   constexpr size_t max_retry_count = 5;
-  for (size_t i = 0; i < max_retry_count; ++i) {
+  for (size_t i = 0; i < max_retry_count && (i == 0 || ev_flag == 0); ++i) {
     if (send_event(content, "m.video"))
       break;
     const auto retry_delay_sec = i * 5;

@@ -4,11 +4,11 @@
 #include <boost/uuid/uuid_io.hpp>
 #include <fmt/chrono.h>
 #include <fmt/format.h>
+#include <gsl/gsl>
 #include <nlohmann/json.hpp>
 
 #include <absl/strings/internal/resize_uninitialized.h>
 #include <chrono>
-#include <future>
 #include <string>
 #include <vector>
 
@@ -41,12 +41,15 @@ RoiLookupResult MatrixNotifier::look_for_roi(const PipelineContext &ctx) const {
   return NotFound;
 }
 
+// Post-step on purpose: the recording on disk must stay complete (see write)
 std::optional<std::string>
 MatrixNotifier::trim_video(const std::string &input_video_path,
-                           int frames_to_remove) {
-  std::string temp_path = fmt::format(
-      "/tmp/nvenc_buffer_{}.mp4", boost::uuids::to_string(m_uuid_generator()));
-
+                           const std::string &trimmed_video_path,
+                           const int frames_to_remove) const {
+  const auto remove_trimmed = gsl::finally([&trimmed_video_path] {
+    std::error_code ec;
+    std::filesystem::remove(trimmed_video_path, ec);
+  });
   try {
     // 2. Probe Metadata (Standard VideoCapture for header info)
     cv::VideoCapture cap(input_video_path);
@@ -79,7 +82,7 @@ MatrixNotifier::trim_video(const std::string &input_video_path,
     params.rateControlMode = cv::cudacodec::ENC_PARAMS_RC_VBR;
     params.targetQuality = m_target_quality;
     const auto writer = cv::cudacodec::createVideoWriter(
-        temp_path, frame_size, cv::cudacodec::Codec::HEVC, m_fps,
+        trimmed_video_path, frame_size, cv::cudacodec::Codec::HEVC, m_fps,
         cv::cudacodec::ColorFormat::BGR, params);
 
     cv::cuda::GpuMat d_frame;
@@ -97,8 +100,8 @@ MatrixNotifier::trim_video(const std::string &input_video_path,
     writer->release();
 
     std::error_code ec;
-    auto size = std::filesystem::file_size(temp_path, ec);
-    std::ifstream file(temp_path, std::ios::binary);
+    auto size = std::filesystem::file_size(trimmed_video_path, ec);
+    std::ifstream file(trimmed_video_path, std::ios::binary);
     if (ec || !file) {
       SPDLOG_ERROR("IO error");
       return std::nullopt;
@@ -111,52 +114,42 @@ MatrixNotifier::trim_video(const std::string &input_video_path,
     return buffer;
 
   } catch (const std::exception &e) {
-    if (std::filesystem::exists(temp_path)) {
-      std::filesystem::remove(temp_path);
-    }
     SPDLOG_ERROR("e.what(): {}", e.what());
     return std::nullopt;
   }
 }
 
 void MatrixNotifier::finalize_video_then_send_out(
-    std::string temp_video_path,
-    const std::shared_ptr<MatrixNotifier> This /* MUST pass by val here*/) {
+    const std::string temp_video_path, const std::string trimmed_video_path,
+    const std::string jpeg_data, const cv::Size thumbnail_size,
+    const size_t frame_count) const {
   using namespace std::chrono;
 
-  std::string jpeg_data;
-  if (!This->m_gpu_encoder->encode(This->m_max_roi_score_frame, jpeg_data,
-                                   90)) {
-    SPDLOG_ERROR("m_gpu_encoder->encode() failed");
-  }
-
-  const auto video_duration_ms = static_cast<long>(
-      This->m_current_video_frame_count * 1000.0 / This->m_fps);
+  const auto video_duration_ms =
+      static_cast<long>(frame_count * 1000.0 / m_fps);
   const auto send_video_start_at = steady_clock::now();
-  int frames_to_remove = This->m_roi_gap_tolerance_frames -
-                         This->m_video_postcapture_frames -
-                         This->m_video_precapture_frames;
+  int frames_to_remove = m_roi_gap_tolerance_frames -
+                         m_video_postcapture_frames - m_video_precapture_frames;
   if (frames_to_remove < 0)
     frames_to_remove = 0;
-  if (const auto video = This->trim_video(temp_video_path, frames_to_remove);
+  if (const auto video =
+          trim_video(temp_video_path, trimmed_video_path, frames_to_remove);
       video.has_value()) {
-    This->m_sender->send_video_from_memory(
+    m_sender->send_video_from_memory(
         video.value(),
         fmt::format("{:%Y-%m-%dT%H:%M:%S}.mp4", system_clock::now()),
         video_duration_ms,
         fmt::format("{:%Y-%m-%dT%H:%M:%S}", system_clock::now()), jpeg_data,
-        This->m_max_roi_score_frame.size().width,
-        This->m_max_roi_score_frame.size().height);
-    const auto send_video_end_at = steady_clock::now();
-    SPDLOG_INFO(
-        "video size: {}KB + thumbnail size {}KB, video_length(sec): {}, "
-        "send_video_from_memory() took {}ms({}KB/sec)",
-        video.value().size() / 1024, jpeg_data.size() / 1024,
-        video_duration_ms / 1000,
-        duration_cast<milliseconds>(send_video_end_at - send_video_start_at)
-            .count(),
-        (video.value().size() + jpeg_data.size()) / 1024 /
-            (video_duration_ms / 1000));
+        thumbnail_size.width, thumbnail_size.height);
+    const auto send_video_ms =
+        duration_cast<milliseconds>(steady_clock::now() - send_video_start_at)
+            .count();
+    SPDLOG_INFO("video size: {}KB + thumbnail size {}KB, video_length(sec): "
+                "{:.1f}, send_video_from_memory() took {}ms ({:.0f}KB/sec)",
+                video.value().size() / 1024, jpeg_data.size() / 1024,
+                video_duration_ms / 1000.0, send_video_ms,
+                (video.value().size() + jpeg_data.size()) / 1024.0 /
+                    std::max<long>(send_video_ms, 1) * 1000);
   } else {
     SPDLOG_ERROR("trim_video() failed");
   }
@@ -171,6 +164,21 @@ void MatrixNotifier::finalize_video_then_send_out(
   }
 }
 
+void MatrixNotifier::consume_pending_sends(const bool wait) {
+  std::erase_if(m_pending_sends, [wait](auto &f) {
+    if (!wait && f.wait_for(0s) != std::future_status::ready)
+      return false;
+    try {
+      f.get();
+    } catch (const std::exception &e) {
+      SPDLOG_ERROR("video send failed: {}", e.what());
+    } catch (...) {
+      SPDLOG_ERROR("video send failed");
+    }
+    return true;
+  });
+}
+
 void MatrixNotifier::handle_video(const cv::cuda::GpuMat &frame,
                                   [[maybe_unused]] const PipelineContext &ctx,
                                   const RoiLookupResult roi_flag) {
@@ -180,11 +188,6 @@ void MatrixNotifier::handle_video(const cv::cuda::GpuMat &frame,
   while (m_frames_queue.size() >
          static_cast<size_t>(m_video_precapture_frames)) {
     m_frames_queue.pop();
-    /*
-    SPDLOG_WARN("m_frames_queue.size() == {} >  "
-                "m_video_precapture_frames({}), m_frames_queue.pop()'ed",
-                m_frames_queue.size(),
-                static_cast<size_t>(m_video_precapture_frames));*/
   }
 
   // is_frame_changing and roi_flag rely on the current frame
@@ -254,21 +257,29 @@ void MatrixNotifier::handle_video(const cv::cuda::GpuMat &frame,
                 is_roi_gap_tolerance_reached,
                 m_current_video_should_be_suppressed);
     m_state = Utils::VideoRecordingState::IDLE;
-    if (!m_current_video_should_be_suppressed) {
-      // creating a shared_ptr from *this, s.t. the detach()'ed t will never
-      // access *this after *this is deleted.
-      auto self_ptr = shared_from_this();
-      std::thread(finalize_video_then_send_out, m_temp_video_path, self_ptr)
-          .detach();
+    if (!m_current_video_should_be_suppressed &&
+        m_current_video_frame_count > 0) {
+      std::string jpeg_data;
+      if (!m_gpu_encoder->encode(m_max_roi_score_frame, jpeg_data, 90))
+        SPDLOG_ERROR("m_gpu_encoder->encode() failed");
+      consume_pending_sends(false);
+      m_pending_sends.push_back(std::async(
+          std::launch::async, &MatrixNotifier::finalize_video_then_send_out,
+          this, m_temp_video_path,
+          fmt::format("/tmp/nvenc_buffer_{}.mp4",
+                      boost::uuids::to_string(m_uuid_generator())),
+          std::move(jpeg_data), m_max_roi_score_frame.size(),
+          m_current_video_frame_count));
     } else {
       try {
         if (!std::filesystem::remove(m_temp_video_path)) {
           SPDLOG_ERROR("std::filesystem::remove({}) returns false",
                        m_temp_video_path);
         } else {
-          SPDLOG_INFO("std::filesystem::remove({})'edc video not sent due to "
-                      "ROI suppression",
-                      m_temp_video_path);
+          SPDLOG_INFO("std::filesystem::remove({})'ed, video not sent "
+                      "(suppressed: {}, frames: {})",
+                      m_temp_video_path, m_current_video_should_be_suppressed,
+                      m_current_video_frame_count);
         }
       } catch (const std::filesystem::filesystem_error &e) {
         SPDLOG_ERROR("std::filesystem::remove({}) exception, e.what(): {}",
@@ -283,6 +294,8 @@ void MatrixNotifier::handle_video(const cv::cuda::GpuMat &frame,
     m_max_roi_score = roi_score;
   }
 
+  // Always write the tail: it is trimmed only on the uploaded copy so that
+  // consecutive recordings stay concatenable without a gap.
   m_writer->write(m_frames_queue.front().frame);
   m_frames_queue.pop();
   ++m_current_video_frame_count;

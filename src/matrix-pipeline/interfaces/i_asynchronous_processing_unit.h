@@ -152,25 +152,17 @@ private:
    * Pops items from the queue and delegates to process_frame().
    */
   void dequeue_loop() {
-    // std::this_thread::sleep_for(std::chrono::seconds(5));
-    // SPDLOG_INFO("Now start dequeue_loop()");
     while (m_running.load() || !is_queue_empty()) {
       AsyncPayload payload;
 
       {
         std::unique_lock lock(m_queue_mutex);
-
-        // Wait until the queue has data OR we are asked to stop
         m_cv.wait(lock, [this] {
           return !m_processing_queue.empty() || !m_running.load();
         });
-
-        if (m_processing_queue.empty()) {
-          if (!m_running.load())
-            break;  // Exit condition
-          continue; // Spurious wake-up check
-        }
-
+        // empty here implies !m_running
+        if (m_processing_queue.empty())
+          break;
         payload = m_processing_queue.front();
         m_processing_queue.pop();
       }
