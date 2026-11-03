@@ -7,7 +7,6 @@
 #include <gsl/gsl>
 #include <nlohmann/json.hpp>
 
-#include <absl/strings/internal/resize_uninitialized.h>
 #include <chrono>
 #include <string>
 #include <vector>
