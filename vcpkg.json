@@ -1,10 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
   "dependencies": [
-    "stb",
     "nlohmann-json",
-    "cppzmq",
-    "readerwriterqueue",
     "cxxopts",
     "boost-stacktrace",
     "boost-uuid",
@@ -20,10 +17,6 @@
     {
       "name": "drogon",
       "version>=": "1.9.13"
-    },
-    {
-      "name": "protobuf",
-      "version>=": "5.29.5#3"
     },
     {
       "name": "cpr",

@@ -23,11 +23,6 @@ message(STATUS "OpenCV found at: ${OpenCV_DIR}")
 message(STATUS "OpenCV_INCLUDE_DIRS: ${OpenCV_INCLUDE_DIRS}")
 message(STATUS "OpenCV_LIBS: ${OpenCV_LIBS}")
 
-# disable Link Time Optimization
-# set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_DEBUG OFF)
-# Force -O0 for Debug configurations
-# set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
-
 add_subdirectory(tests)
 add_subdirectory(src/matrix-pipeline)
 add_subdirectory(src/tools/yunet)

@@ -19,7 +19,6 @@ struct VideoWriterConfig {
   int m_cool_off_sec = 30;
   int m_max_length_sec = 60;
   double m_target_fps = 30.0;
-  // int m_codec_fourcc = cv::VideoWriter::fourcc('H', '2', '6', '4');
 
   // N frames to keep
   int m_pre_record_frames = 30 * 5;

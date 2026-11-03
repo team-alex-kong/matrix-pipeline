@@ -296,8 +296,6 @@ SynchronousProcessingResult SfaceDetect::process(cv::cuda::GpuMat &frame,
 
     if (best_cosine_score > m_inference_cosine_score_threshold &&
         best_identity_idx != -1) {
-      recognition.matched_idx = best_identity_idx;
-
       const auto &matched_identity = m_gallery[best_identity_idx];
       recognition.identity = matched_identity.name;
       recognition.category = matched_identity.category;

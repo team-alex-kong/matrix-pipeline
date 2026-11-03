@@ -17,7 +17,6 @@ void mosq_log_callback([[maybe_unused]] mosquitto *mosq, void *obj, int level,
                        const char *str) {
 
   switch (level) {
-    // case MOSQ_LOG_DEBUG:
   case MOSQ_LOG_INFO:
     SPDLOG_INFO("{}", str);
   case MOSQ_LOG_NOTICE:
@@ -84,6 +83,7 @@ mosquitto *init_mosquitto(void *obj) {
                  mosquitto_strerror(rc));
     goto err_mosquitto_config;
   }
+  // On purpose: the broker infra does not support TLS host-name verification
   mosquitto_tls_insecure_set(mosq, true);
   if ((rc = mosquitto_tls_set(mosq, self->m_mqtt_ca_file.c_str(), nullptr,
                               nullptr, nullptr, nullptr)) != MOSQ_ERR_SUCCESS) {
@@ -199,7 +199,6 @@ YoloPublishMqtt::process([[maybe_unused]] cv::cuda::GpuMat &frame,
       duration_cast<milliseconds>(system_clock::now().time_since_epoch())
           .count();
   payload["signal_source"] = "matrix-pipeline";
-  // const auto payload_mp = njson::to_msgpack(payload);
   mosquitto_publish(m_mosq, nullptr, m_mqtt_topic.c_str(),
                     payload.dump().length(), payload.dump().c_str(), 2, false);
   return success_and_continue;

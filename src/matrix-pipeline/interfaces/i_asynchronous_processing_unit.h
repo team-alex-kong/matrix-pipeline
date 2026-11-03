@@ -34,7 +34,6 @@ struct AsyncPayload {
 
 class IAsynchronousProcessingUnit : public IProcessingUnit {
 protected:
-  // const std::string m_unit_path;
   std::array<bool, 24> m_turned_on_hours{
       true, true, true, true, true, true, true, true, true, true, true, true,
       true, true, true, true, true, true, true, true, true, true, true, true};
@@ -94,7 +93,6 @@ public:
                        m_unit_path, queue_size, critical_queue_size,
                        queue_size - warning_queue_size);
           while (queue_size > warning_queue_size) {
-            // auto [frame, ctx] = m_processing_queue.front();
             m_processing_queue.pop();
             queue_size = m_processing_queue.size();
           }

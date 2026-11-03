@@ -37,11 +37,8 @@ bool SFaceOverlay::init(const njson &config) {
 SynchronousProcessingResult SFaceOverlay::process(cv::cuda::GpuMat &frame,
                                                   PipelineContext &ctx) {
 
-  // std::string yunet_text_to_overlay = "YuNet: ";
   njson yunet_jsons;
   njson sface_jsons;
-  // std::string sface_text_to_overlay = "SFace: ";
-  // ctx.text_to_overlay += "SFace: ";
   // We also check YuNet because SFace results rely on YuNet geometry.
   if (ctx.yunet_sface.results.empty()) {
     ctx.text_to_overlay += fmt::format("YuNet: []\nSFace: []\n");
@@ -52,7 +49,6 @@ SynchronousProcessingResult SFaceOverlay::process(cv::cuda::GpuMat &frame,
   // point the cv::Mat directly to the pinned memory
   m_frame_cpu = m_pinned_mem_for_cpu_frame.createMatHeader();
 
-  // std::string text_to_overlay;
   for (const auto &[detection, recognition] : ctx.yunet_sface.results) {
 
     njson yunet_json;

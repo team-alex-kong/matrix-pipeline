@@ -7,7 +7,6 @@
 #include <gsl/gsl>
 #include <nlohmann/json.hpp>
 
-#include <absl/strings/internal/resize_uninitialized.h>
 #include <chrono>
 #include <string>
 #include <vector>
@@ -37,7 +36,6 @@ RoiLookupResult MatrixNotifier::look_for_roi(const PipelineContext &ctx) const {
       return Found;
     }
   }
-  // SPDLOG_INFO("NotFound");
   return NotFound;
 }
 
@@ -190,9 +188,7 @@ void MatrixNotifier::handle_video(const cv::cuda::GpuMat &frame,
     m_frames_queue.pop();
   }
 
-  // is_frame_changing and roi_flag rely on the current frame
-  // const auto is_frame_changing = ctx.change_rate >=
-  // m_activation_min_frame_change_rate;
+  // change_rate and roi_flag rely on the current frame
   if (m_state == Utils::VideoRecordingState::IDLE &&
       (roi_flag != Found ||
        ctx.change_rate < m_activation_min_frame_change_rate))
@@ -200,9 +196,7 @@ void MatrixNotifier::handle_video(const cv::cuda::GpuMat &frame,
 
   if (m_state == Utils::VideoRecordingState::IDLE) {
     try {
-      // m_ram_buf = std::make_unique<Utils::RamVideoBuffer>();
-      // cv::cudacodec::createVideoWriter expects a .mp4 file path, we must
-      // emulate this behavior...
+      // cv::cudacodec::createVideoWriter expects a .mp4 file path
       m_temp_video_path =
           fmt::format("/tmp/nvenc_buffer_{}.mp4",
                       boost::uuids::to_string(m_uuid_generator()));
@@ -374,9 +368,8 @@ bool MatrixNotifier::init(const njson &config) {
   m_sface_mark_authorized_identity_as_not_interesting = config.value(
       "/roi/sFaceMarkAuthorizedIdentityAsNotInteresting"_json_pointer,
       m_sface_mark_authorized_identity_as_not_interesting);
-  SPDLOG_INFO("matrix_homeserver: {}, matrix_room_id: {}, matrix_access_token: "
-              "{}",
-              m_matrix_homeserver, m_matrix_room_id, m_matrix_access_token);
+  SPDLOG_INFO("matrix_homeserver: {}, matrix_room_id: {}", m_matrix_homeserver,
+              m_matrix_room_id);
 
   SPDLOG_INFO(
       "video_max_length(sec): {}, m_roi_gap_tolerance_frames: {}, "

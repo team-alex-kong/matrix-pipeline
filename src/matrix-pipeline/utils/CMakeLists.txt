@@ -14,12 +14,6 @@ target_link_libraries(nvjpeg_encoder
         spdlog::spdlog)
 
 
-add_library(ram_video_buffer
-        ram_video_buffer.cpp
-        ram_video_buffer.h
-)
-
-
 add_library(matrix_sender
         matrix_sender.cpp
         matrix_sender.h

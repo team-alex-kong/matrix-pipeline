@@ -3,7 +3,6 @@
 #include "../entities/video_recording_state.h"
 #include "../interfaces/i_asynchronous_processing_unit.h"
 #include "../utils/nvjpeg_encoder.h"
-#include "../utils/ram_video_buffer.h"
 
 #include <boost/uuid/uuid.hpp> // main uuid family
 #include <boost/uuid/uuid_generators.hpp>
@@ -11,9 +10,6 @@
 
 #include <future>
 
-namespace MatrixPipeline::Utils {
-struct RamVideoBuffer;
-} // namespace MatrixPipeline::Utils
 namespace MatrixPipeline::ProcessingUnit {
 enum RoiLookupResult {
   Found,
@@ -59,7 +55,6 @@ class MatrixNotifier final : public IAsynchronousProcessingUnit {
   // A value of ~25-30 is usually good for NVENC H.264.
   uint8_t m_target_quality{30};
   cv::Ptr<cv::cudacodec::VideoWriter> m_writer{nullptr};
-  // std::unique_ptr<Utils::RamVideoBuffer> m_ram_buf{nullptr};
   std::string m_temp_video_path;
   Utils::VideoRecordingState m_state{Utils::IDLE};
   std::queue<AsyncPayload> m_frames_queue;

@@ -6,7 +6,6 @@
 #include <variant>
 
 namespace MatrixPipeline::ProcessingUnit {
-// class IAsynchronousProcessingUnit;
 
 using ProcessingUnitVariant =
     std::variant<std::unique_ptr<ISynchronousProcessingUnit>,

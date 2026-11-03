@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
     ("c,config-path", "path of the config file", cxxopts::value<string>()->default_value(config_path));
   // clang-format on
   auto result = options.parse(argc, argv);
-  if (result.count("help") || !result.count("config-path")) {
+  if (result.count("help")) {
     std::cout << options.help() << "\n";
     return 0;
   }

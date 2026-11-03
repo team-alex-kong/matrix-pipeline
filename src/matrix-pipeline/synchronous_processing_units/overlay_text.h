@@ -30,9 +30,6 @@ private:
 
   std::chrono::milliseconds m_overlay_interval{100ms};
   std::chrono::time_point<std::chrono::steady_clock> m_last_overlay_at;
-  // --- Configuration ---
-  // std::string m_info_template;
-
   // --- Visual Settings ---
   float m_text_height_ratio{0.02f}; // 2% of frame height
   int m_margin_x{5};

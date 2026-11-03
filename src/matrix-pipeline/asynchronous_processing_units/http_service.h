@@ -136,7 +136,7 @@ public:
 
 protected:
   void on_frame_ready(cv::cuda::GpuMat &frame,
-                      PipelineContext &meta_data) override {
+                      [[maybe_unused]] PipelineContext &ctx) override {
     auto now = std::chrono::steady_clock::now();
     if (now - m_last_update_time < m_refresh_interval_sec)
       return;
@@ -159,10 +159,8 @@ protected:
                                                            temp_buffer.end());
 
         {
-          // CRITICAL SECTION: Nanoseconds duration
           std::lock_guard<std::mutex> lock(m_image_mutex);
           m_latest_jpeg_ptr = std::move(new_image_ptr);
-          m_last_meta = meta_data;
         }
 
         m_last_update_time = now;
@@ -177,8 +175,6 @@ protected:
   }
 
 private:
-  friend class HttpServiceDispatcher;
-
   // Handles standard browser image requests (GET /)
   void handle_snapshot_request(
       const HttpRequestPtr &req,
@@ -227,7 +223,7 @@ private:
     // 1. Send MJPEG Header manually to hijack the stream
     std::string header = "HTTP/1.1 200 OK\r\n"
                          "Content-Type: multipart/x-mixed-replace; "
-                         "boundary=cuda_motion_frame\r\n"
+                         "boundary=matrix_pipeline_frame\r\n"
                          "Connection: keep-alive\r\n"
                          "Pragma: no-cache\r\n"
                          "Cache-Control: no-cache\r\n"
@@ -313,7 +309,6 @@ private:
 
   std::mutex m_image_mutex;
   std::shared_ptr<std::string> m_latest_jpeg_ptr;
-  PipelineContext m_last_meta;
 
   std::unique_ptr<Utils::NvJpegEncoder> m_gpu_encoder{nullptr};
 
