@@ -32,10 +32,6 @@ std::string MatrixSender::upload(const std::string &data,
     r = cpr::Post(cpr::Url{url},
                   cpr::Header{{"Authorization", "Bearer " + accessToken},
                               {"Content-Type", contentType}},
-                  /*cpr::Proxies{
-                      {"http", "socks5://localhost:7890"},
-                      {"https", "socks5://localhost:7890"},
-                  },*/
                   cpr::Body{data}, cpr::LowSpeed{1024, 30});
     if (r.status_code == 200) {
       try {
@@ -80,9 +76,6 @@ bool MatrixSender::send_event(const njson &contentBody,
   });
   session.SetBody(cpr::Body{payload.dump()});
   session.SetLowSpeed(cpr::LowSpeed{1024, 30});
-  // session.SetVerbose(cpr::Verbose{true});
-  // session.SetProxies(cpr::Proxies{{"http", "socks5://localhost:7890"},
-  //                                 {"https", "socks5://localhost:7890"}});
 
   // 3. Send the request
   if (cpr::Response r = session.Put(); r.status_code != 200) {
@@ -163,14 +156,7 @@ void MatrixSender::send_video_from_memory(const std::string &video_data,
     }
   }
 
-  content["info"] = info; /*
-   if (!body.empty()) {
-     content["info"]["filename"] = body.ends_with(".mp4") ? body : body +
-   ".mp4"; content["body"] = body.ends_with(".mp4") ? body : body + ".mp4";
-     content["format"] = "org.matrix.custom.html";
-     content["formatted_body"] = "Your Caption Here";
-   }*/
-  // SPDLOG_INFO("content: {}", content.dump());
+  content["info"] = info;
   constexpr size_t max_retry_count = 5;
   for (size_t i = 0; i < max_retry_count && (i == 0 || ev_flag == 0); ++i) {
     if (send_event(content, "m.video"))

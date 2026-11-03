@@ -45,7 +45,6 @@ SynchronousProcessingResult OverlayText::process(cv::cuda::GpuMat &frame,
     // --- 2. Split into Lines ---
     std::vector<std::string> lines;
     std::stringstream ss(ctx.text_to_overlay);
-    // SPDLOG_INFO("ctx.text_to_overlay: {}", ctx.text_to_overlay);
     std::string line;
     while (std::getline(ss, line, '\n')) {
       lines.push_back(line);

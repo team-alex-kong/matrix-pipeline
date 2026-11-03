@@ -36,7 +36,6 @@ RoiLookupResult MatrixNotifier::look_for_roi(const PipelineContext &ctx) const {
       return Found;
     }
   }
-  // SPDLOG_INFO("NotFound");
   return NotFound;
 }
 
@@ -189,9 +188,7 @@ void MatrixNotifier::handle_video(const cv::cuda::GpuMat &frame,
     m_frames_queue.pop();
   }
 
-  // is_frame_changing and roi_flag rely on the current frame
-  // const auto is_frame_changing = ctx.change_rate >=
-  // m_activation_min_frame_change_rate;
+  // change_rate and roi_flag rely on the current frame
   if (m_state == Utils::VideoRecordingState::IDLE &&
       (roi_flag != Found ||
        ctx.change_rate < m_activation_min_frame_change_rate))

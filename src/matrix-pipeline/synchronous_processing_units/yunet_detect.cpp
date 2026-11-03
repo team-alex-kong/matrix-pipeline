@@ -10,9 +10,6 @@ bool YuNetDetect::init(const njson &config) {
     const auto model_path = config.value("modelPath", "");
     m_face_score_threshold =
         config.value("scoreThreshold", m_face_score_threshold);
-    // m_inference_interval =
-    // std::chrono::milliseconds(config.value("inferenceIntervalMs",
-    // m_inference_interval.count()));
     m_nms_threshold = config.value("nmsThreshold", m_nms_threshold);
     m_top_k = config.value("topK", m_top_k);
 
@@ -78,7 +75,6 @@ SynchronousProcessingResult YuNetDetect::process(cv::cuda::GpuMat &frame,
 
       YuNetSFaceResult res;
       res.detection = std::move(detection);
-      // res.recognition = std::nullopt;
       ctx.yunet_sface.results.push_back(std::move(res));
     }
   }

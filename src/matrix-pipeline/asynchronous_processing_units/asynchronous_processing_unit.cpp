@@ -38,8 +38,6 @@ AsynchronousProcessingUnit::~AsynchronousProcessingUnit() {
 }
 
 bool AsynchronousProcessingUnit::init(const njson &config) {
-  // m_exe = std::make_unique<PipelineExecutor>();
-
   using namespace ProcessingUnit;
   const auto &settings_pipeline = config.at("pipeline");
   m_turned_on_hours = config.value("turnedOnHours", m_turned_on_hours);

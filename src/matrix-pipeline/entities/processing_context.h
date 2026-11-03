@@ -67,6 +67,5 @@ struct PipelineContext {
   YoloContext yolo;
   YuNetSFaceContext yunet_sface;
   std::string text_to_overlay;
-  // SFaceContext sface;
 };
 } // namespace MatrixPipeline::ProcessingUnit
