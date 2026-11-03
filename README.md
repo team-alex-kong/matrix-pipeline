@@ -10,7 +10,7 @@ heavy operations—such as YOLOv11 object detection, MP4 encoding, and network
 I/O—are offloaded to isolated threads to
 prevent frame drops. Key capabilities include multi-resolution MJPEG streaming,
 motion-triggered recording, Matrix chat
-alerts, and ZeroMQ broadcasting, all defined via a flexible JSON configuration.
+alerts, and MQTT publishing, all defined via a flexible JSON configuration.
 
 ```mermaid
 graph TD
@@ -87,14 +87,6 @@ graph TD
         LatEnd_M --> HTTP2{{HTTP Server :54322}}:::io
         HTTP2 --> Writer2(Video Writer<br/>.mp4):::io
         Writer2 --> Matrix2(Matrix Notifier):::io
-    end
-
-    %% ============================================================
-    %% ASYNC BRANCH 4: ZeroMQ (Integration)
-    %% ============================================================
-    OvlMain -.->|Clone & Push| Async4_Start(Async Queue):::asyncThread
-    subgraph Async_Worker_4 [Async Thread 4: Integration]
-        Async4_Start --> ZMQ{{ZeroMQ Pub :5678}}:::io
     end
 
     %% Styling classes assignment
