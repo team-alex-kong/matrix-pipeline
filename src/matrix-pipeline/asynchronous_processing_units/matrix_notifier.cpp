@@ -199,9 +199,7 @@ void MatrixNotifier::handle_video(const cv::cuda::GpuMat &frame,
 
   if (m_state == Utils::VideoRecordingState::IDLE) {
     try {
-      // m_ram_buf = std::make_unique<Utils::RamVideoBuffer>();
-      // cv::cudacodec::createVideoWriter expects a .mp4 file path, we must
-      // emulate this behavior...
+      // cv::cudacodec::createVideoWriter expects a .mp4 file path
       m_temp_video_path =
           fmt::format("/tmp/nvenc_buffer_{}.mp4",
                       boost::uuids::to_string(m_uuid_generator()));
