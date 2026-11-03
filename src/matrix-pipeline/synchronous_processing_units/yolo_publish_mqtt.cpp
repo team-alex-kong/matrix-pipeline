@@ -84,7 +84,6 @@ mosquitto *init_mosquitto(void *obj) {
                  mosquitto_strerror(rc));
     goto err_mosquitto_config;
   }
-  mosquitto_tls_insecure_set(mosq, true);
   if ((rc = mosquitto_tls_set(mosq, self->m_mqtt_ca_file.c_str(), nullptr,
                               nullptr, nullptr, nullptr)) != MOSQ_ERR_SUCCESS) {
     SPDLOG_ERROR("mosquitto_tls_set() failed: {}", mosquitto_strerror(rc));
