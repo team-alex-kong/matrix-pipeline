@@ -227,7 +227,7 @@ private:
     // 1. Send MJPEG Header manually to hijack the stream
     std::string header = "HTTP/1.1 200 OK\r\n"
                          "Content-Type: multipart/x-mixed-replace; "
-                         "boundary=cuda_motion_frame\r\n"
+                         "boundary=matrix_pipeline_frame\r\n"
                          "Connection: keep-alive\r\n"
                          "Pragma: no-cache\r\n"
                          "Cache-Control: no-cache\r\n"
