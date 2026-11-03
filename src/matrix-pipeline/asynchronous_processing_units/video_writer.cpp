@@ -144,10 +144,10 @@ bool VideoWriter::start_recording(const cv::Size frame_size,
   try {
     cv::cudacodec::EncoderParams params;
     params.rateControlMode = cv::cudacodec::ENC_PARAMS_RC_VBR;
-    params.targetQuality = 23;
+    params.targetQuality = 30;
     m_writer = cv::cudacodec::createVideoWriter(
         m_video_path, frame_size, cv::cudacodec::Codec::HEVC,
-        m_config.m_target_fps, cv::cudacodec::ColorFormat::BGR);
+        m_config.m_target_fps, cv::cudacodec::ColorFormat::BGR, params);
   } catch (const cv::Exception &e) {
     SPDLOG_ERROR("cv::cudacodec::createVideoWriter({}) failed: {}",
                  m_video_path, e.what());
