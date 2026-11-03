@@ -41,7 +41,6 @@ bool AsynchronousProcessingUnit::init(const njson &config) {
   // m_exe = std::make_unique<PipelineExecutor>();
 
   using namespace ProcessingUnit;
-  SPDLOG_INFO("settings.dump(): {}", config.dump());
   const auto &settings_pipeline = config.at("pipeline");
   m_turned_on_hours = config.value("turnedOnHours", m_turned_on_hours);
   for (nlohmann::basic_json<>::size_type i = 0; i < settings_pipeline.size();

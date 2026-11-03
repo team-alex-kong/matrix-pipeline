@@ -374,9 +374,8 @@ bool MatrixNotifier::init(const njson &config) {
   m_sface_mark_authorized_identity_as_not_interesting = config.value(
       "/roi/sFaceMarkAuthorizedIdentityAsNotInteresting"_json_pointer,
       m_sface_mark_authorized_identity_as_not_interesting);
-  SPDLOG_INFO("matrix_homeserver: {}, matrix_room_id: {}, matrix_access_token: "
-              "{}",
-              m_matrix_homeserver, m_matrix_room_id, m_matrix_access_token);
+  SPDLOG_INFO("matrix_homeserver: {}, matrix_room_id: {}", m_matrix_homeserver,
+              m_matrix_room_id);
 
   SPDLOG_INFO(
       "video_max_length(sec): {}, m_roi_gap_tolerance_frames: {}, "
