@@ -1,6 +1,8 @@
 add_library(utils
         misc.cpp misc.h
 )
+target_link_libraries(utils
+        PUBLIC Drogon::Drogon fmt::fmt nlohmann_json::nlohmann_json spdlog::spdlog)
 
 add_library(nvjpeg_encoder
         nvjpeg_encoder.cpp
