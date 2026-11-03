@@ -5,7 +5,6 @@
 #include <spdlog/spdlog.h>
 
 #include <chrono>
-#include <fstream>
 #include <stdexcept>
 #include <thread>
 
@@ -14,29 +13,12 @@ namespace MatrixPipeline::Utils {
 // -----------------------------------------------------------------------------
 // Private Helpers
 // -----------------------------------------------------------------------------
-/*
-void MatrixSender::stbiWriteFunc(void *context, void *data, int size) {
-    auto *buffer = static_cast<std::vector<unsigned char>*>(context);
-    const unsigned char* bytes = static_cast<const unsigned char*>(data);
-    buffer->insert(buffer->end(), bytes, bytes + size);
-}*/
 
 std::string MatrixSender::sanitizeUrl(std::string url) {
   while (!url.empty() && url.back() == '/') {
     url.pop_back();
   }
   return url;
-}
-
-std::string MatrixSender::readFile(const std::string &path) {
-  std::ifstream ifs(path, std::ios::binary | std::ios::ate);
-  if (!ifs)
-    return "";
-  auto pos = ifs.tellg();
-  std::string result(pos, '\0');
-  ifs.seekg(0, std::ios::beg);
-  ifs.read(&result[0], pos);
-  return result;
 }
 
 std::string MatrixSender::upload(const std::string &data,
@@ -134,34 +116,6 @@ void MatrixSender::sendText(const std::string &message) const {
   njson content;
   content["body"] = message;
   send_event(content, "m.text");
-}
-
-void MatrixSender::send_jpeg(const std::string &jpeg_bytes, int width,
-                             int height, const std::string &caption) const {
-  if (std::string mxc = upload(jpeg_bytes, "image/jpeg"); !mxc.empty()) {
-    njson content;
-    content["body"] = caption;
-    content["url"] = mxc;
-    content["info"]["w"] = width;
-    content["info"]["h"] = height;
-    content["info"]["mimetype"] = "image/jpeg";
-    content["info"]["size"] = jpeg_bytes.size();
-    send_event(content, "m.image");
-  }
-}
-
-void MatrixSender::send_video(const std::string &filepath,
-                              const std::string &caption, size_t duration_ms,
-                              const std::string &body,
-                              const std::string &thumbnail_data, int width,
-                              int height, const std::string &thumb_mime) {
-  std::string data = readFile(filepath);
-  if (data.empty()) {
-    SPDLOG_ERROR("readFile({}) is empty, returning", filepath);
-    return;
-  }
-  send_video_from_memory(data, caption, duration_ms, body, thumbnail_data,
-                         width, height, thumb_mime);
 }
 
 void MatrixSender::send_video_from_memory(const std::string &video_data,
