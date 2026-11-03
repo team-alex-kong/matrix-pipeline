@@ -45,7 +45,6 @@ private:
   cv::Size m_model_input_size = {640, 640}; // Default YOLO size
   float m_confidence_threshold = 0.5f;
   float m_nms_thres = 0.45f;
-  int m_frame_interval = 10;
   std::chrono::milliseconds m_inference_interval = 100ms;
   std::chrono::time_point<std::chrono::steady_clock> m_last_inference_time;
   YoloContext m_prev_yolo_ctx;

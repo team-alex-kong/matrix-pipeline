@@ -20,11 +20,6 @@ private:
   // Aggressive Filtering	  10 - 20
   int m_top_k = 100;
   cv::cuda::HostMem m_pinned_buffer;
-  // cv::Mat m_frame_cpu;
-  bool m_disabled{false};
-  // std::chrono::milliseconds m_inference_interval{100};
-  std::chrono::time_point<std::chrono::steady_clock> m_last_inference_at;
-  YuNetSFaceContext m_prev_ctx_yunet_sface;
 
 public:
   explicit YuNetDetect(const std::string &unit_path)

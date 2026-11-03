@@ -43,7 +43,6 @@ private:
   std::string m_gallery_directory;
   // For OpenCV's SFace implementation, the higher the better
   float m_inference_cosine_score_threshold{0.363};
-  float m_inference_recognition_quality_confidence_threshold{10.0};
   std::chrono::milliseconds m_inference_interval{100ms};
   std::chrono::time_point<std::chrono::steady_clock> m_last_inference_at;
   YuNetSFaceContext m_prev_yunet_sface_ctx;
